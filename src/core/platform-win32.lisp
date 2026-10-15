@@ -270,6 +270,14 @@ opened by the directory's own name."
          :capability capability))
 
 
+;;;; -- Host Identity --
+
+(defmethod platform-host-family ((platform win32-platform))
+  "Report the Windows host family."
+  (declare (ignore platform))
+  :windows)
+
+
 ;;;; -- Capabilities and Processes --
 
 (defmethod platform-supports-p ((platform win32-platform) capability)

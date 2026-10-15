@@ -60,6 +60,16 @@
   (uiop:native-namestring pathname))
 
 
+;;;; -- Host Identity --
+
+(defmethod platform-host-family ((platform posix-platform))
+  "Report the host family of this POSIX host."
+  (declare (ignore platform))
+  (if (member :darwin *features*)
+      :macosx
+      :linux))
+
+
 ;;;; -- Capabilities and Processes --
 
 (defmethod platform-supports-p ((platform posix-platform) capability)

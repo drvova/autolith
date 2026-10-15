@@ -78,6 +78,18 @@
    "One observation of a filesystem object's kind, identity, size, times, and privacy."))
 
 
+;;;; -- Host Identity --
+
+(defgeneric platform-host-family (platform)
+  (:documentation
+   "Return the host operating-system family PLATFORM runs on.
+
+Autolith's supported runtime targets are Windows, macOS, and Linux, and the
+result names one of them: :WINDOWS, :MACOSX, or :LINUX. A provider that
+mirrors another client's identity reports the host under that client's own
+name for the family."))
+
+
 ;;;; -- Capabilities and Processes --
 
 (defgeneric platform-supports-p (platform capability)
