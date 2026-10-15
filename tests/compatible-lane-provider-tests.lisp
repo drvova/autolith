@@ -178,33 +178,67 @@
 
 (-> compatible-lane-provider-test--vertex-endpoint () null)
 (defun compatible-lane-provider-test--vertex-endpoint ()
-  "Test the Vertex AI endpoint resolved from the environment."
+  "Test the Vertex AI API-key route, its override, and its independence."
   (with-test-environment
-      (("GOOGLE_CLOUD_PROJECT" "lane-project")
-       ("GCP_PROJECT" nil)
-       ("GCLOUD_PROJECT" nil)
-       ("GOOGLE_VERTEX_LOCATION" "global")
-       ("GOOGLE_CLOUD_LOCATION" nil)
-       ("VERTEX_LOCATION" nil)
-       ("AUTOLITH_GOOGLE_VERTEX_PROVIDER_ENDPOINT" nil))
+      (("AUTOLITH_GOOGLE_VERTEX_PROVIDER_ENDPOINT" nil)
+       ("GOOGLE_CLOUD_PROJECT" "lane-project")
+       ("GOOGLE_VERTEX_LOCATION" "europe-west1"))
     (test-assert
      (string= (google-vertex-chat-completions-endpoint)
-              "https://aiplatform.googleapis.com/v1/projects/lane-project/locations/global/endpoints/openapi/chat/completions")
-     "Vertex AI names the global host for the global location")
-    (with-test-environment (("GOOGLE_VERTEX_LOCATION" "europe-west1"))
-      (test-assert
-       (string= (google-vertex-chat-completions-endpoint)
-                "https://europe-west1-aiplatform.googleapis.com/v1/projects/lane-project/locations/europe-west1/endpoints/openapi/chat/completions")
-       "Vertex AI names the regional host for a region"))
-    (with-test-environment (("GOOGLE_VERTEX_LOCATION" nil)
-                            ("GOOGLE_CLOUD_LOCATION" "asia-east1"))
-      (test-assert (string= (google-vertex-location) "asia-east1")
-                   "Vertex AI reads the location from its named variables")))
-  (with-test-environment (("GOOGLE_CLOUD_PROJECT" nil)
-                          ("GCP_PROJECT" nil)
-                          ("GCLOUD_PROJECT" "lane-fallback-project"))
-    (test-assert (string= (google-vertex-project) "lane-fallback-project")
-                 "Vertex AI reads the project from its named variables"))
+              *google-vertex-chat-completions-endpoint*)
+     "Vertex AI keeps the project-less API-key route")
+    (test-assert
+     (string= (provider-registration-endpoint
+               (provider-registration-find "google-vertex"))
+              *google-vertex-chat-completions-endpoint*)
+     "Vertex AI registers the API-key route"))
+  (with-test-environment
+      (("AUTOLITH_GOOGLE_VERTEX_PROVIDER_ENDPOINT"
+        "https://vertex.invalid/v1/endpoints/openapi/chat/completions"))
+    (test-assert
+     (string= (google-vertex-chat-completions-endpoint)
+              "https://vertex.invalid/v1/endpoints/openapi/chat/completions")
+     "Vertex AI honors its endpoint override"))
+  nil)
+
+(-> compatible-lane-provider-test--credential-headers () null)
+(defun compatible-lane-provider-test--credential-headers ()
+  "Test the header and scheme each lane carries its key in."
+  (with-test-configuration (configuration root)
+    (declare (ignore root))
+    (compatible-lane-provider-test--configure configuration)
+    (dolist (row (compatible-lane-provider-test--rows))
+      (destructuring-bind (name display-name family key-variable create-function) row
+        (declare (ignore display-name family))
+        (let ((header (if (string= name "google-vertex")
+                          "x-goog-api-key"
+                          "Authorization"))
+              (scheme (if (string= name "google-vertex") "" "Bearer")))
+          (with-test-environment ((key-variable "lane-key"))
+            (let* ((provider (compatible-lane-provider-test--provider
+                              name configuration))
+                   (credentials (credential-manager-load
+                                 (funcall create-function configuration)))
+                   (headers (openai-compatible--request-headers
+                             provider credentials nil))
+                   (sent (rest (assoc header headers :test #'string=))))
+              (test-assert
+               (string= (openai-compatible-provider-credential-header provider)
+                        header)
+               (format nil "~A sends its key in ~A" name header))
+              (test-assert
+               (string= (openai-compatible-provider-credential-scheme provider)
+                        scheme)
+               (format nil "~A prefixes its key with ~S" name scheme))
+              (test-assert
+               (string= sent (if (plusp (length scheme))
+                                 (format nil "~A ~A" scheme "lane-key")
+                                 "lane-key"))
+               (format nil "~A sends its key under ~A" name header))
+              (when (string= name "google-vertex")
+                (test-assert
+                 (null (assoc "Authorization" headers :test #'string=))
+                 "Vertex AI sends no bearer header"))))))))
   nil)
 
 (-> compatible-lane-provider-test--effort-omission () null)
@@ -298,6 +332,7 @@
            (compatible-lane-provider-test--cline-client-identity)
            (compatible-lane-provider-test--ollama-discovery)
            (compatible-lane-provider-test--vertex-endpoint)
+           (compatible-lane-provider-test--credential-headers)
            (compatible-lane-provider-test--vertex-namespace)
            (compatible-lane-provider-test--effort-omission))
       (provider--registry-restore registry-snapshot)))
