@@ -229,6 +229,62 @@
                      "Xiaomi requests omit the thinking field"))))
   nil)
 
+(-> compatible-lane-provider-test--model-routing () null)
+(defun compatible-lane-provider-test--model-routing ()
+  "Test that every declared lane model routes back to its own lane."
+  (dolist (row (compatible-lane-provider-test--rows))
+    (destructuring-bind (name display-name family key-variable create-function) row
+      (declare (ignore display-name family key-variable create-function))
+      (let* ((registration (provider-registration-find name))
+             (models (provider-registration-declared-models registration)))
+        (test-assert (or models
+                         (provider-registration-model-discovery registration))
+                     (format nil "~A declares models or model discovery" name))
+        (dolist (model models)
+          (let* ((identifier (provider-model-name model))
+                 (owner (provider-registration-for-model identifier)))
+            (test-assert (and owner
+                              (string= (provider-registration-name owner) name))
+                         (format nil "~A serves its own model ~A" name
+                                 identifier))))
+        (when (string= name "google-vertex")
+          (test-assert
+           (every (lambda (model)
+                    (uiop:string-prefix-p *google-vertex-model-prefix*
+                                          (provider-model-name model)))
+                  models)
+           "Vertex AI models live in their own namespace")))))
+  nil)
+
+(-> compatible-lane-provider-test--vertex-namespace () null)
+(defun compatible-lane-provider-test--vertex-namespace ()
+  "Test the Vertex AI model namespace and its wire form."
+  (test-assert (string= (google-vertex-wire-model-name
+                         "google-vertex/gemini-2.5-pro")
+                        "gemini-2.5-pro")
+               "Vertex AI removes its model namespace for the wire")
+  (test-assert (handler-case
+                   (progn (google-vertex-wire-model-name "gemini-2.5-pro") nil)
+                 (configuration-error () t))
+               "Vertex AI refuses a model outside its namespace")
+  (with-test-configuration (configuration root)
+    (declare (ignore root))
+    (compatible-lane-provider-test--configure configuration)
+    (setf (config :model configuration) "google-vertex/gemini-2.5-flash")
+    (let* ((provider (compatible-lane-provider-test--provider "google-vertex"
+                                                             configuration))
+           (conversation
+             (conversation-create configuration :identifier "vertex-request")))
+      (conversation-append-user-message conversation "Hello Vertex.")
+      (multiple-value-bind (request delivery)
+          (provider-request-object provider conversation (json-array)
+                                   :goal-context nil
+                                   :compaction-p nil)
+        (declare (ignore delivery))
+        (test-assert (string= (json-get request "model") "gemini-2.5-flash")
+                     "Vertex AI sends the model without its namespace"))))
+  nil)
+
 (-> test-compatible-lane-providers () null)
 (defun test-compatible-lane-providers ()
   "Run the offline compatible lane provider tests."
@@ -238,9 +294,11 @@
            (compatible-lane-provider-test--registration)
            (compatible-lane-provider-test--credentials)
            (compatible-lane-provider-test--providers)
+           (compatible-lane-provider-test--model-routing)
            (compatible-lane-provider-test--cline-client-identity)
            (compatible-lane-provider-test--ollama-discovery)
            (compatible-lane-provider-test--vertex-endpoint)
+           (compatible-lane-provider-test--vertex-namespace)
            (compatible-lane-provider-test--effort-omission))
       (provider--registry-restore registry-snapshot)))
   nil)

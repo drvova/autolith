@@ -386,32 +386,33 @@
  :display-name "Google Vertex AI"
  :endpoint (google-vertex-chat-completions-endpoint)
  :credential-manager #'google-vertex-credential-manager-create
- :models '((:name "gemini-3.8-flash" :context-window 1048576
+ :wire-model-name #'google-vertex-wire-model-name
+ :models '((:name "google-vertex/gemini-3.8-flash" :context-window 1048576
             :reasoning-efforts ("low" "medium" "high"))
-           (:name "gemini-3.7-flash" :context-window 1048576
+           (:name "google-vertex/gemini-3.7-flash" :context-window 1048576
             :reasoning-efforts ("low" "medium" "high"))
-           (:name "gemini-3.6-flash" :context-window 1048576
+           (:name "google-vertex/gemini-3.6-flash" :context-window 1048576
             :reasoning-efforts ("low" "medium" "high"))
-           (:name "gemini-3.5-flash" :context-window 1048576
+           (:name "google-vertex/gemini-3.5-flash" :context-window 1048576
             :reasoning-efforts ("low" "medium" "high"))
-           (:name "gemini-3.5-flash-lite" :context-window 1048576
+           (:name "google-vertex/gemini-3.5-flash-lite" :context-window 1048576
             :reasoning-efforts ("low" "medium" "high"))
-           (:name "gemini-3.1-pro-preview" :context-window 1048576
+           (:name "google-vertex/gemini-3.1-pro-preview" :context-window 1048576
             :reasoning-efforts ("low" "high"))
-           (:name "gemini-3.1-pro-preview-customtools" :context-window 1048576
+           (:name "google-vertex/gemini-3.1-pro-preview-customtools" :context-window 1048576
             :reasoning-efforts ("low" "high"))
-           (:name "gemini-3.1-flash-lite" :context-window 1048576
+           (:name "google-vertex/gemini-3.1-flash-lite" :context-window 1048576
             :reasoning-efforts ("low" "medium" "high"))
-           (:name "gemini-3-flash-preview" :context-window 1048576
+           (:name "google-vertex/gemini-3-flash-preview" :context-window 1048576
             :reasoning-efforts ("low" "medium" "high"))
-           (:name "gemini-2.5-pro" :context-window 1048576
+           (:name "google-vertex/gemini-2.5-pro" :context-window 1048576
             :reasoning-efforts ("low" "medium" "high"))
-           (:name "gemini-2.5-flash" :context-window 1048576
+           (:name "google-vertex/gemini-2.5-flash" :context-window 1048576
             :reasoning-efforts ("low" "medium" "high"))
-           (:name "gemini-2.5-flash-lite" :context-window 1048576
+           (:name "google-vertex/gemini-2.5-flash-lite" :context-window 1048576
             :reasoning-efforts ("low" "medium" "high"))
-           (:name "gemini-flash-latest" :context-window 1048576
+           (:name "google-vertex/gemini-flash-latest" :context-window 1048576
             :reasoning-efforts ("low" "medium" "high"))
-           (:name "gemini-flash-lite-latest" :context-window 1048576
+           (:name "google-vertex/gemini-flash-lite-latest" :context-window 1048576
             :reasoning-efforts ("low" "medium" "high")))
  :source ':builtin)
