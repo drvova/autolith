@@ -1454,15 +1454,14 @@ value. =AUTOLITH_OLLAMA_PROVIDER_ENDPOINT= and
 =AUTOLITH_OLLAMA_MODELS_ENDPOINT= override the chat and discovery endpoints
 independently.
 
-Google Vertex AI serves Gemini models on the OpenAI-compatible route of
-=aiplatform.googleapis.com= or =REGION-aiplatform.googleapis.com=.
-=GOOGLE_CLOUD_PROJECT= (=GCP_PROJECT= or =GCLOUD_PROJECT=) names the project and
-=GOOGLE_VERTEX_LOCATION= (=GOOGLE_CLOUD_LOCATION= or =VERTEX_LOCATION=) names the
-location, which defaults to =global=. =GOOGLE_CLOUD_API_KEY= takes precedence
-over Autolith's private Vertex AI key, and
-=AUTOLITH_GOOGLE_VERTEX_PROVIDER_ENDPOINT= overrides the endpoint. Vertex AI
-models are named =google-vertex/<model>= locally, because the subscription lane
-serves the same models under their own names.
+Google Vertex AI serves Gemini models on the OpenAI-compatible partner route,
+which takes an API key raw in =x-goog-api-key= on the project-less host.
+=GOOGLE_CLOUD_API_KEY= takes precedence over Autolith's private Vertex AI key,
+and =AUTOLITH_GOOGLE_VERTEX_PROVIDER_ENDPOINT= names a regional host or a
+gateway instead; the project and location in the path belong to the OAuth
+route, which this lane does not carry. Vertex AI models are named
+=google-vertex/<model>= locally, because the subscription lane serves the same
+models under their own names.
 
 
 ** Commands
