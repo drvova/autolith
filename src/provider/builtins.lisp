@@ -419,10 +419,10 @@
  :credential-manager #'ollama-credential-manager-create
  :source ':builtin)
 
-;;; Vertex AI's project and location are read from the environment when this
-;;; registration is read, and AUTOLITH_GOOGLE_VERTEX_PROVIDER_ENDPOINT names a
-;;; deployment directly. The lane serves the Gemini models on the
-;;; OpenAI-compatible route.
+;;; Vertex AI takes an API key raw in x-goog-api-key on the project-less
+;;; partner route of its OpenAI-compatible wire, and
+;;; AUTOLITH_GOOGLE_VERTEX_PROVIDER_ENDPOINT names a regional host or a
+;;; gateway instead.
 (register-openai-compatible-provider
  "google-vertex"
  :description "Google Vertex AI"
@@ -431,6 +431,8 @@
  :endpoint (google-vertex-chat-completions-endpoint)
  :credential-manager #'google-vertex-credential-manager-create
  :wire-model-name #'google-vertex-wire-model-name
+ :credential-header *google-vertex-credential-header*
+ :credential-scheme *google-vertex-credential-scheme*
  :models '((:name "google-vertex/gemini-3.8-flash" :context-window 1048576
             :reasoning-efforts ("low" "medium" "high"))
            (:name "google-vertex/gemini-3.7-flash" :context-window 1048576

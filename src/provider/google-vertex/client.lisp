@@ -9,6 +9,12 @@
 (defparameter *google-vertex-model-prefix* "google-vertex/"
   "The model namespace prefix every Vertex AI model identifier carries.")
 
+(defparameter *google-vertex-credential-header* "x-goog-api-key"
+  "The Vertex AI header carrying an API key.")
+
+(defparameter *google-vertex-credential-scheme* ""
+  "The scheme a Vertex AI API key carries, which is none.")
+
 (-> google-vertex-wire-model-name (string) string)
 (defun google-vertex-wire-model-name (model)
   "Return the Vertex AI model MODEL names on the wire."

@@ -293,52 +293,23 @@
         override
         *ollama-models-endpoint*)))
 
-;; Vertex AI serves Gemini through an OpenAI-compatible route on a regional
-;; host, as Google documents it: the project and location name the path and
-;; the API key is the bearer.
-(defparameter *google-vertex-region-template*
-  "https://~A-aiplatform.googleapis.com"
-  "The regional Vertex AI host, formatting the location.")
-
-(defparameter *google-vertex-global-host*
-  "https://aiplatform.googleapis.com"
-  "The Vertex AI host serving the global location.")
-
-(-> first-non-empty-environment-value (list) (option string))
-(defun first-non-empty-environment-value (names)
-  "Return the first non-empty value NAMES name in the environment, or NIL."
-  (some (lambda (name)
-          (let ((value (uiop:getenv name)))
-            (and (non-empty-string-p value) value)))
-        names))
-
-(-> google-vertex-location () string)
-(defun google-vertex-location ()
-  "Return the configured Vertex AI location, defaulting to the global one."
-  (or (first-non-empty-environment-value
-       '("GOOGLE_VERTEX_LOCATION" "GOOGLE_CLOUD_LOCATION" "VERTEX_LOCATION"))
-      "global"))
-
-(-> google-vertex-project () (option string))
-(defun google-vertex-project ()
-  "Return the configured Google Cloud project, when the environment names one."
-  (first-non-empty-environment-value
-   '("GOOGLE_CLOUD_PROJECT" "GCP_PROJECT" "GCLOUD_PROJECT")))
+;; Vertex AI serves Gemini on its OpenAI-compatible route, and that route
+;; takes an API key in x-goog-api-key on the global host: a project and a
+;; location belong to the OAuth route, which this lane does not carry.
+(defparameter *google-vertex-chat-completions-endpoint*
+  "https://aiplatform.googleapis.com/v1/endpoints/openapi/chat/completions"
+  "The Vertex AI Chat Completions endpoint serving a project-less API key.")
 
 (-> google-vertex-chat-completions-endpoint () string)
 (defun google-vertex-chat-completions-endpoint ()
-  "Return the Vertex AI Chat Completions endpoint for the configured project and location.
+  "Return the Vertex AI Chat Completions endpoint.
 
-The project and location are read from the environment when the provider is
-registered; AUTOLITH_GOOGLE_VERTEX_PROVIDER_ENDPOINT overrides the result."
-  (let* ((location (google-vertex-location))
-         (host (if (string= location "global")
-                   *google-vertex-global-host*
-                   (format nil *google-vertex-region-template* location))))
-    (format nil "~A/v1/projects/~A/locations/~A/endpoints/openapi/chat/completions"
-            host
-            (or (google-vertex-project) "")
-            location)))
+AUTOLITH_GOOGLE_VERTEX_PROVIDER_ENDPOINT overrides the endpoint, which is how
+a deployment names the regional host or a gateway in front of it."
+  (let ((override (uiop:getenv "AUTOLITH_GOOGLE_VERTEX_PROVIDER_ENDPOINT")))
+    (if (non-empty-string-p override)
+        override
+        *google-vertex-chat-completions-endpoint*)))
 
 (defparameter *supported-reasoning-efforts*
   '("none" "low" "medium" "high" "xhigh" "max" "ultra")
