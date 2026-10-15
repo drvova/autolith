@@ -341,10 +341,11 @@ manager from PROVIDER-NAME."
      (:models (option list))
      (:models-endpoint (option string))
      (:endpoint non-empty-string)
+     (:authenticator function)
      (:headers list)
      (:reasoning-parameter (option string))
      (:stream-usage-p boolean)
-     (:credential-manager (option credential-manager))
+     (:credential-manager (option function))
      (:display-name (option non-empty-string))
      (:wire-model-name (option function))
      (:credential-header non-empty-string)
@@ -353,6 +354,7 @@ manager from PROVIDER-NAME."
     string)
 (defun register-openai-compatible-provider
     (&key name description family models models-endpoint endpoint
+      (authenticator #'openai-compatible--authenticate)
       headers reasoning-parameter (stream-usage-p t)
       credential-manager display-name wire-model-name
       (credential-header "Authorization") (credential-scheme "Bearer")
@@ -369,7 +371,9 @@ vendor's own environment variable as well. DISPLAY-NAME is the
 user-visible provider name when it differs from NAME. WIRE-MODEL-NAME, a
 function of a selected model, is the model the wire takes. CREDENTIAL-HEADER
 and CREDENTIAL-SCHEME name the header carrying the key and the scheme prefixed
-to it, which lets a lane send its key in the vendor's own header."
+to it, which lets a lane send its key in the vendor's own header. AUTHENTICATOR,
+a function of the provider and the keyword arguments STREAM and OPEN-BROWSER-P,
+replaces the interactive key prompt."
   (unless (or models models-endpoint)
     (error 'configuration-error
            :message
@@ -409,7 +413,7 @@ to it, which lets a lane send its key in the vendor's own header."
      :model-discovery-endpoint models-endpoint
      :protocol ':chat-completions
      :endpoint endpoint
-     :authenticator #'openai-compatible--authenticate
+     :authenticator authenticator
      :factory
      (lambda (configuration &key reasoning-summaries-p)
        (declare (ignore reasoning-summaries-p))

@@ -341,7 +341,7 @@
 ;;; AUTOLITH_XIAOMI_PROVIDER_ENDPOINT.
 
 (register-openai-compatible-provider
- "xiaomi"
+ :name "xiaomi"
  :description "Xiaomi MiMo"
  :authenticator #'provider--xiaomi-registration-authenticator
  :display-name "Xiaomi MiMo"
@@ -370,7 +370,7 @@
 ;;; Cline's roster is named as its gateway expects it on the wire: a
 ;;; subscription model carries its plan prefix and a free model its own.
 (register-openai-compatible-provider
- "cline"
+ :name "cline"
  :description "Cline"
  :authenticator #'provider--cline-registration-authenticator
  :display-name "Cline"
@@ -410,7 +410,7 @@
 ;;; credential, so a self-hosted server that asks for none takes any
 ;;; non-empty key value.
 (register-openai-compatible-provider
- "ollama"
+ :name "ollama"
  :description "Ollama (cloud or self-hosted)"
  :authenticator #'provider--ollama-registration-authenticator
  :display-name "Ollama"
@@ -424,7 +424,7 @@
 ;;; AUTOLITH_GOOGLE_VERTEX_PROVIDER_ENDPOINT names a regional host or a
 ;;; gateway instead.
 (register-openai-compatible-provider
- "google-vertex"
+ :name "google-vertex"
  :description "Google Vertex AI"
  :authenticator #'provider--google-vertex-registration-authenticator
  :display-name "Google Vertex AI"
