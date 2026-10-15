@@ -20,7 +20,7 @@
 (defun cline-client-headers ()
   "Return the Cline client identity every Cline request carries."
   (list (cons "HTTP-Referer" "https://cline.bot")
-        (cons "X-Title" "Cline")
+        (cons "X-TITLE" "Cline")
         (cons "X-IS-MULTIROOT" "false")
         (cons "X-CLIENT-TYPE" "cline-sdk")
         (cons "X-CLIENT-VERSION" *cline-client-version*)
