@@ -63,24 +63,32 @@
 (-> openai-compatible-provider-create
     (configuration &key
                    (:name non-empty-string)
+                   (:display-name (option non-empty-string))
                    (:family keyword)
                    (:headers list)
                    (:reasoning-parameter (option string))
-                   (:stream-usage-p boolean))
+                   (:stream-usage-p boolean)
+                   (:credential-manager (option credential-manager)))
     openai-compatible-provider)
 (defun openai-compatible-provider-create
-    (configuration &key name family headers reasoning-parameter
-                        (stream-usage-p t))
-  "Create one OpenAI-compatible provider from registered endpoint metadata."
+    (configuration &key name display-name family headers reasoning-parameter
+                        (stream-usage-p t) credential-manager)
+  "Create one OpenAI-compatible provider from registered endpoint metadata.
+
+NAME keys the private API-key store. DISPLAY-NAME, when supplied, is the
+user-visible provider name. CREDENTIAL-MANAGER, when supplied, replaces the
+private API-key manager built from NAME, which lets a lane read its key from
+the vendor's environment variable as well."
   (make-instance
    'openai-compatible-provider
    :configuration configuration
    :credential-manager
-   (api-key-credential-manager-create
-    :provider-name name
-    :pathname (configuration-api-keys-path configuration))
+   (or credential-manager
+       (api-key-credential-manager-create
+        :provider-name name
+        :pathname (configuration-api-keys-path configuration)))
    :session-id (make-identifier)
-   :display-name name
+   :display-name (or display-name name)
    :family family
    :headers (copy-tree headers)
    :reasoning-parameter reasoning-parameter
@@ -278,11 +286,14 @@ manager from PROVIDER-NAME."
      (:headers list)
      (:reasoning-parameter (option string))
      (:stream-usage-p boolean)
+     (:credential-manager (option credential-manager))
+     (:display-name (option non-empty-string))
      (:source keyword))
     string)
 (defun register-openai-compatible-provider
     (&key name description family models models-endpoint endpoint
       headers reasoning-parameter (stream-usage-p t)
+      credential-manager display-name
       (source (provider--current-registration-source)))
   "Register an OpenAI-compatible Chat Completions provider.
 
@@ -290,7 +301,10 @@ The provider resolves its bearer key from Autolith's private API-key store using
 NAME. MODELS contains optional static strings or model property lists accepted by
 REGISTER-PROVIDER. MODELS-ENDPOINT discovers additional model identifiers and
 advertised context windows. STREAM-USAGE-P controls whether streaming requests
-ask for a final usage chunk."
+ask for a final usage chunk. CREDENTIAL-MANAGER, a function of CONFIGURATION,
+replaces the private API-key manager, which lets a lane read its key from the
+vendor's own environment variable as well. DISPLAY-NAME is the
+user-visible provider name when it differs from NAME."
   (unless (or models models-endpoint)
     (error 'configuration-error
            :message
@@ -337,10 +351,13 @@ ask for a final usage chunk."
        (openai-compatible-provider-create
         configuration
         :name name
+        :display-name display-name
         :family effective-family
         :headers headers
         :reasoning-parameter reasoning-parameter
-        :stream-usage-p stream-usage-p))
+        :stream-usage-p stream-usage-p
+        :credential-manager (and credential-manager
+                                (funcall credential-manager configuration))))
      :source source)))
 
 
