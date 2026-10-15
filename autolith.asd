@@ -365,6 +365,7 @@
                              (:file "opencode-provider-tests")
                              (:file "openrouter-provider-tests")
                              (:file "mistral-provider-tests")
+                             (:file "compatible-lane-provider-tests")
                              (:file "copilot-provider-tests")
                              (:file "resource-tests")
                              (:file "workspace-resource-tests")

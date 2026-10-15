@@ -437,6 +437,9 @@
 (define-test-suite mistral-provider
   test-mistral-provider)
 
+(define-test-suite compatible-lane-provider
+  test-compatible-lane-providers)
+
 (define-test-suite resource
   test-resource-protocol
   test-resource-edit-operation-schema
