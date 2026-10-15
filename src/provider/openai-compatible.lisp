@@ -31,7 +31,14 @@
     :initform t
     :reader openai-compatible-provider-stream-usage-p
     :type boolean
-    :documentation "Whether streaming requests ask the provider to report usage."))
+    :documentation "Whether streaming requests ask the provider to report usage.")
+   (wire-model-name
+    :initarg :wire-model-name
+    :initform nil
+    :reader openai-compatible-provider-wire-model-name
+    :type (option function)
+    :documentation
+    "The function that maps a selected model to the model the wire takes."))
   (:documentation
    "A provider for the streaming OpenAI Chat Completions wire protocol."))
 
@@ -52,6 +59,15 @@
   (declare (ignore provider))
   "max_completion_tokens")
 
+(-> openai-compatible-provider-wire-model (openai-compatible-provider string) string)
+(defun openai-compatible-provider-wire-model (provider model)
+  "Return the model PROVIDER sends for the selected MODEL."
+  (let ((mapping (openai-compatible-provider-wire-model-name provider)))
+    (if mapping
+        (funcall mapping model)
+        model)))
+
+
 (defmethod provider-account-label ((provider openai-compatible-provider))
   "Return the configured OpenAI-compatible provider name."
   (openai-compatible-provider-display-name provider))
@@ -68,17 +84,20 @@
                    (:headers list)
                    (:reasoning-parameter (option string))
                    (:stream-usage-p boolean)
-                   (:credential-manager (option credential-manager)))
+                   (:credential-manager (option credential-manager))
+                   (:wire-model-name (option function)))
     openai-compatible-provider)
 (defun openai-compatible-provider-create
     (configuration &key name display-name family headers reasoning-parameter
-                        (stream-usage-p t) credential-manager)
+                        (stream-usage-p t) credential-manager wire-model-name)
   "Create one OpenAI-compatible provider from registered endpoint metadata.
 
 NAME keys the private API-key store. DISPLAY-NAME, when supplied, is the
 user-visible provider name. CREDENTIAL-MANAGER, when supplied, replaces the
 private API-key manager built from NAME, which lets a lane read its key from
-the vendor's environment variable as well."
+the vendor's environment variable as well. WIRE-MODEL-NAME, when supplied,
+maps a selected model to the model the wire takes, which lets a lane keep a
+model identifier of its own."
   (make-instance
    'openai-compatible-provider
    :configuration configuration
@@ -92,7 +111,8 @@ the vendor's environment variable as well."
    :family family
    :headers (copy-tree headers)
    :reasoning-parameter reasoning-parameter
-   :stream-usage-p stream-usage-p))
+   :stream-usage-p stream-usage-p
+   :wire-model-name wire-model-name))
 
 (defmethod provider-reconfiguration-initargs append
     ((provider openai-compatible-provider))
@@ -288,12 +308,13 @@ manager from PROVIDER-NAME."
      (:stream-usage-p boolean)
      (:credential-manager (option credential-manager))
      (:display-name (option non-empty-string))
+     (:wire-model-name (option function))
      (:source keyword))
     string)
 (defun register-openai-compatible-provider
     (&key name description family models models-endpoint endpoint
       headers reasoning-parameter (stream-usage-p t)
-      credential-manager display-name
+      credential-manager display-name wire-model-name
       (source (provider--current-registration-source)))
   "Register an OpenAI-compatible Chat Completions provider.
 
@@ -304,7 +325,8 @@ advertised context windows. STREAM-USAGE-P controls whether streaming requests
 ask for a final usage chunk. CREDENTIAL-MANAGER, a function of CONFIGURATION,
 replaces the private API-key manager, which lets a lane read its key from the
 vendor's own environment variable as well. DISPLAY-NAME is the
-user-visible provider name when it differs from NAME."
+user-visible provider name when it differs from NAME. WIRE-MODEL-NAME, a
+function of a selected model, is the model the wire takes."
   (unless (or models models-endpoint)
     (error 'configuration-error
            :message
@@ -356,6 +378,7 @@ user-visible provider name when it differs from NAME."
         :headers headers
         :reasoning-parameter reasoning-parameter
         :stream-usage-p stream-usage-p
+        :wire-model-name wire-model-name
         :credential-manager (and credential-manager
                                 (funcall credential-manager configuration))))
      :source source)))
@@ -379,7 +402,9 @@ user-visible provider name when it differs from NAME."
                                      compaction-p)))
          (projection
           (make-instance 'cl-llm-provider-api::wire-request :model
-                         (config :model configuration) :items
+                         (openai-compatible-provider-wire-model
+                          provider (config :model configuration))
+                         :items
                          (conversation-input-items-for-family conversation
                                                               (provider-family
                                                                provider)
