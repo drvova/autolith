@@ -1306,8 +1306,9 @@ on =localhost:1455= or =localhost:1457= by default. Use
 browser authorization URL is always printed for manual use. Grok and Nous
 Research use browser device flows. Gemini uses Google installed-application
 OAuth with a local loopback callback.
-Anthropic, Fireworks, OpenCode, OpenRouter, Mistral, and user-registered
-OpenAI-compatible providers use API keys.
+Anthropic, Cline, Fireworks, Google Vertex AI, Mistral, Ollama, OpenCode,
+OpenRouter, Xiaomi MiMo, and user-registered OpenAI-compatible providers
+use API keys.
 
 Authenticate a GitHub Copilot subscription with =autolith auth copilot=
 or =(auth "copilot")=. Approve the displayed device code at
@@ -1432,6 +1433,37 @@ You can also supply this JSON through =AUTOLITH_OPENROUTER_PROVIDER_ROUTING=.
 Supply an empty string to use OpenRouter's normal routing.
 Provider preference fields are sent as supplied, including =order=,
 =allow_fallbacks=, =only=, =ignore=, =sort=, and =max_price=.
+
+Cline serves its whole roster on the OpenAI Chat Completions wire at
+=api.cline.bot= and gates part of that roster to a request carrying the client
+identity Autolith sends. =CLINE_API_KEY= takes precedence over Autolith's
+private Cline key. Model identifiers keep the gateway's own =cline-free/= and
+=cline-pass/= prefixes. =AUTOLITH_CLINE_PROVIDER_ENDPOINT= overrides the
+endpoint.
+
+Xiaomi MiMo serves the OpenAI Chat Completions wire at =api.xiaomimimo.com=.
+=XIAOMI_API_KEY= takes precedence over Autolith's private Xiaomi key. A Token
+Plan key is served only by that plan's regional clusters, so a deployment using
+one names the cluster with =AUTOLITH_XIAOMI_PROVIDER_ENDPOINT=.
+
+Ollama answers the OpenAI-compatible wire under =/v1= on =ollama.com=, for a
+hosted account and a self-hosted server alike. =OLLAMA_CLOUD_API_KEY= takes
+precedence over Autolith's private Ollama key, and Autolith always sends a
+credential, so a self-hosted server that asks for none takes any non-empty
+value. =AUTOLITH_OLLAMA_PROVIDER_ENDPOINT= and
+=AUTOLITH_OLLAMA_MODELS_ENDPOINT= override the chat and discovery endpoints
+independently.
+
+Google Vertex AI serves Gemini models on the OpenAI-compatible route of
+=aiplatform.googleapis.com= or =REGION-aiplatform.googleapis.com=.
+=GOOGLE_CLOUD_PROJECT= (=GCP_PROJECT= or =GCLOUD_PROJECT=) names the project and
+=GOOGLE_VERTEX_LOCATION= (=GOOGLE_CLOUD_LOCATION= or =VERTEX_LOCATION=) names the
+location, which defaults to =global=. =GOOGLE_CLOUD_API_KEY= takes precedence
+over Autolith's private Vertex AI key, and
+=AUTOLITH_GOOGLE_VERTEX_PROVIDER_ENDPOINT= overrides the endpoint. Vertex AI
+models are named =google-vertex/<model>= locally, because the subscription lane
+serves the same models under their own names.
+
 
 ** Commands
 
