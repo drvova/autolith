@@ -249,6 +249,97 @@
         override
         *mistral-models-endpoint*)))
 
+;; The public Xiaomi MiMo Chat Completions API, as the vendor documents it:
+;; the OpenAI chat dialect at a bearer key. A pay-as-you-go key is served at
+;; the shared base; a Token Plan key is served only by that plan's regional
+;; clusters, which Autolith reaches by naming one through
+;; AUTOLITH_XIAOMI_PROVIDER_ENDPOINT.
+(defparameter *xiaomi-chat-completions-endpoint*
+  "https://api.xiaomimimo.com/v1/chat/completions"
+  "The Xiaomi MiMo Chat Completions API endpoint.")
+
+;; The public Cline Chat Completions API, as the vendor documents it: the
+;; OpenAI chat dialect at a bearer key, where the gateway serves part of the
+;; roster only to a request that carries the Cline client identity.
+(defparameter *cline-chat-completions-endpoint*
+  "https://api.cline.bot/api/v1/chat/completions"
+  "The Cline Chat Completions API endpoint.")
+
+(defparameter *cline-client-version* "3.0.58"
+  "The Cline client version Autolith identifies itself with.")
+
+(defparameter *cline-client-core-version* "0.0.79"
+  "The Cline core version Autolith identifies itself with.")
+
+(defparameter *cline-client-platform-version* "3.0.54"
+  "The host version Autolith reports as the Cline client's platform version.")
+
+;; Ollama answers two wires on one host: the native wire under /api and the
+;; OpenAI-compatible wire under /v1, which this provider speaks. A hosted
+;; account and a self-hosted server answer it alike.
+(defparameter *ollama-chat-completions-endpoint*
+  "https://ollama.com/v1/chat/completions"
+  "The Ollama Chat Completions API endpoint.")
+
+(defparameter *ollama-models-endpoint*
+  "https://ollama.com/v1/models"
+  "The Ollama models endpoint used for discovery and key validation.")
+
+(-> ollama-models-endpoint () string)
+(defun ollama-models-endpoint ()
+  "Return the configured Ollama model discovery endpoint."
+  (let ((override (uiop:getenv "AUTOLITH_OLLAMA_MODELS_ENDPOINT")))
+    (if (non-empty-string-p override)
+        override
+        *ollama-models-endpoint*)))
+
+;; Vertex AI serves Gemini through an OpenAI-compatible route on a regional
+;; host, as Google documents it: the project and location name the path and
+;; the API key is the bearer.
+(defparameter *google-vertex-region-template*
+  "https://~A-aiplatform.googleapis.com"
+  "The regional Vertex AI host, formatting the location.")
+
+(defparameter *google-vertex-global-host*
+  "https://aiplatform.googleapis.com"
+  "The Vertex AI host serving the global location.")
+
+(-> first-non-empty-environment-value (list) (option string))
+(defun first-non-empty-environment-value (names)
+  "Return the first non-empty value NAMES name in the environment, or NIL."
+  (some (lambda (name)
+          (let ((value (uiop:getenv name)))
+            (and (non-empty-string-p value) value)))
+        names))
+
+(-> google-vertex-location () string)
+(defun google-vertex-location ()
+  "Return the configured Vertex AI location, defaulting to the global one."
+  (or (first-non-empty-environment-value
+       '("GOOGLE_VERTEX_LOCATION" "GOOGLE_CLOUD_LOCATION" "VERTEX_LOCATION"))
+      "global"))
+
+(-> google-vertex-project () (option string))
+(defun google-vertex-project ()
+  "Return the configured Google Cloud project, when the environment names one."
+  (first-non-empty-environment-value
+   '("GOOGLE_CLOUD_PROJECT" "GCP_PROJECT" "GCLOUD_PROJECT")))
+
+(-> google-vertex-chat-completions-endpoint () string)
+(defun google-vertex-chat-completions-endpoint ()
+  "Return the Vertex AI Chat Completions endpoint for the configured project and location.
+
+The project and location are read from the environment when the provider is
+registered; AUTOLITH_GOOGLE_VERTEX_PROVIDER_ENDPOINT overrides the result."
+  (let* ((location (google-vertex-location))
+         (host (if (string= location "global")
+                   *google-vertex-global-host*
+                   (format nil *google-vertex-region-template* location))))
+    (format nil "~A/v1/projects/~A/locations/~A/endpoints/openapi/chat/completions"
+            host
+            (or (google-vertex-project) "")
+            location)))
+
 (defparameter *supported-reasoning-efforts*
   '("none" "low" "medium" "high" "xhigh" "max" "ultra")
   "Reasoning effort names accepted by Autolith configuration.")
@@ -442,7 +533,11 @@ AUTOLITH_NOUS_PROVIDER_ENDPOINT overrides the Nous family endpoint,
 AUTOLITH_FIREWORKS_PROVIDER_ENDPOINT overrides the Fireworks family endpoint,
 AUTOLITH_OPENCODE_PROVIDER_ENDPOINT overrides the OpenCode family endpoint,
 AUTOLITH_OPENROUTER_PROVIDER_ENDPOINT overrides the OpenRouter family endpoint,
-and AUTOLITH_MISTRAL_PROVIDER_ENDPOINT overrides the Mistral family endpoint."
+AUTOLITH_MISTRAL_PROVIDER_ENDPOINT overrides the Mistral family endpoint,
+AUTOLITH_XIAOMI_PROVIDER_ENDPOINT overrides the Xiaomi family endpoint,
+AUTOLITH_CLINE_PROVIDER_ENDPOINT overrides the Cline family endpoint,
+AUTOLITH_OLLAMA_PROVIDER_ENDPOINT overrides the Ollama family endpoint,
+and AUTOLITH_GOOGLE_VERTEX_PROVIDER_ENDPOINT overrides the Vertex AI family endpoint."
   (let* ((family (model-family model))
          (override
            (case family
@@ -465,7 +560,15 @@ and AUTOLITH_MISTRAL_PROVIDER_ENDPOINT overrides the Mistral family endpoint."
              (:openrouter
               (uiop:getenv "AUTOLITH_OPENROUTER_PROVIDER_ENDPOINT"))
              (:mistral
-              (uiop:getenv "AUTOLITH_MISTRAL_PROVIDER_ENDPOINT"))))
+              (uiop:getenv "AUTOLITH_MISTRAL_PROVIDER_ENDPOINT"))
+             (:xiaomi
+              (uiop:getenv "AUTOLITH_XIAOMI_PROVIDER_ENDPOINT"))
+             (:cline
+              (uiop:getenv "AUTOLITH_CLINE_PROVIDER_ENDPOINT"))
+             (:ollama
+              (uiop:getenv "AUTOLITH_OLLAMA_PROVIDER_ENDPOINT"))
+             (:google-vertex
+              (uiop:getenv "AUTOLITH_GOOGLE_VERTEX_PROVIDER_ENDPOINT"))))
          (registered
            (and (fboundp 'provider-model-endpoint)
                 (provider-model-endpoint model))))
@@ -486,6 +589,14 @@ and AUTOLITH_MISTRAL_PROVIDER_ENDPOINT overrides the Mistral family endpoint."
            *openrouter-chat-completions-endpoint*)
           (:mistral
            *mistral-chat-completions-endpoint*)
+          (:xiaomi
+           *xiaomi-chat-completions-endpoint*)
+          (:cline
+           *cline-chat-completions-endpoint*)
+          (:ollama
+           *ollama-chat-completions-endpoint*)
+          (:google-vertex
+           (google-vertex-chat-completions-endpoint))
           (otherwise
            (error 'configuration-error
                   :message

@@ -77,3 +77,34 @@ Fireworks has no authenticated model list, so the probe is a minimal request."
   :source-path (configuration-fireworks-auth-path configuration)
   :login-hint "run autolith auth fireworks"
   :validate-function fireworks-validate-api-key)
+
+;; A Token Plan key is served only by its plan's regional clusters, so the
+;; shared model list cannot validate either kind of Xiaomi key: a rejected key
+;; fails on its first provider request with the normal static-key error.
+(define-static-api-key-provider xiaomi
+  :display-name "Xiaomi MiMo"
+  :environment-variable "XIAOMI_API_KEY"
+  :login-hint "run autolith auth xiaomi")
+
+;; Cline's roster feed is public, so login cannot validate a key without a
+;; real chat request; a rejected key fails on its first provider request with
+;; the normal static-key authentication error.
+(define-static-api-key-provider cline
+  :display-name "Cline"
+  :environment-variable "CLINE_API_KEY"
+  :login-hint "run autolith auth cline")
+
+(define-static-api-key-provider ollama
+  :display-name "Ollama"
+  :environment-variable "OLLAMA_CLOUD_API_KEY"
+  :models-endpoint (ollama-models-endpoint)
+  :key-headers (lambda (key)
+                 (list (cons "Authorization" (concatenate 'string "Bearer " key)))))
+
+;; Vertex AI's model list needs a project and answers on a different route, so
+;; login cannot validate a key with one; a rejected key fails on its first
+;; provider request with the normal static-key authentication error.
+(define-static-api-key-provider google-vertex
+  :display-name "Google Vertex AI"
+  :environment-variable "GOOGLE_CLOUD_API_KEY"
+  :login-hint "run autolith auth google-vertex")

@@ -141,6 +141,7 @@
                              (:file "provider/opencode/client")
                              (:file "provider/openrouter/client")
                              (:file "provider/mistral/client")
+                             (:file "provider/cline/client")
                              (:file "provider/copilot/client")
                              (:file "provider/copilot/auto")
                              (:file "provider/builtins")

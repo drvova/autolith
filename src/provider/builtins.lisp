@@ -285,3 +285,133 @@
  :model-discovery-endpoint *mistral-models-endpoint*
  :model-discovery-endpoint-resolver #'mistral-models-endpoint
  :source ':builtin)
+
+
+;;;; -- Registered Chat Completions Lanes --
+
+;;; Every lane below speaks the OpenAI Chat Completions wire at a bearer key,
+;;; so each is a registration rather than a client implementation. The
+;;; credential manager comes from the lane's definition beside the other
+;;; static API-key providers, which is what lets the vendor's own environment
+;;; variable bootstrap the key.
+
+;;; Xiaomi's models take a thinking object rather than a reasoning effort, so
+;;; this lane declares no reasoning parameter and sends none. A Token Plan key
+;;; is served by that plan's regional clusters instead of the shared base; a
+;;; deployment using one names the cluster through
+;;; AUTOLITH_XIAOMI_PROVIDER_ENDPOINT.
+(register-openai-compatible-provider
+ "xiaomi"
+ :description "Xiaomi MiMo"
+ :display-name "Xiaomi MiMo"
+ :endpoint *xiaomi-chat-completions-endpoint*
+ :credential-manager #'xiaomi-credential-manager-create
+ :models '((:name "mimo-v2.6-pro" :context-window 1048576
+            :reasoning-efforts ("low" "medium" "high"))
+           (:name "mimo-v2.6-pro-ultraspeed" :context-window 1048576
+            :reasoning-efforts ("low" "medium" "high"))
+           (:name "mimo-v2.6-flash" :context-window 1048576
+            :reasoning-efforts ("low" "medium" "high"))
+           (:name "mimo-v2.5-pro" :context-window 1048576
+            :reasoning-efforts ("low" "medium" "high"))
+           (:name "mimo-v2.5-pro-ultraspeed" :context-window 1048576
+            :reasoning-efforts ("low" "medium" "high"))
+           (:name "mimo-v2.5" :context-window 1048576
+            :reasoning-efforts ("low" "medium" "high"))
+           (:name "mimo-v2-pro" :context-window 1048576
+            :reasoning-efforts ("low" "medium" "high"))
+           (:name "mimo-v2-omni" :context-window 262144
+            :reasoning-efforts ("low" "medium" "high"))
+           (:name "mimo-v2-flash" :context-window 262144
+            :reasoning-efforts ("low" "medium" "high")))
+ :source ':builtin)
+
+;;; Cline's roster is named as its gateway expects it on the wire: a
+;;; subscription model carries its plan prefix and a free model its own.
+(register-openai-compatible-provider
+ "cline"
+ :description "Cline"
+ :display-name "Cline"
+ :endpoint *cline-chat-completions-endpoint*
+ :headers (cline-client-headers)
+ :credential-manager #'cline-credential-manager-create
+ :models '((:name "cline-pass/deepseek-v4-pro" :context-window 1048576
+            :reasoning-efforts ("high" "xhigh"))
+           (:name "cline-pass/deepseek-v4.1-flash" :context-window 1000000
+            :reasoning-efforts ("low" "medium" "high" "xhigh"))
+           (:name "cline-pass/glm-5.3" :context-window 1048576
+            :reasoning-efforts ("low" "high" "max"))
+           (:name "cline-pass/glm-5.3-flash" :context-window 1000000
+            :reasoning-efforts ("low" "high" "max"))
+           (:name "cline-pass/kimi-k3" :context-window 1048576
+            :reasoning-efforts ("low" "high" "max"))
+           (:name "cline-pass/mimo-v2.5" :context-window 1050000)
+           (:name "cline-pass/mimo-v2.5-pro" :context-window 1050000)
+           (:name "cline-pass/mimo-v2.6-flash" :context-window 1048576)
+           (:name "cline-pass/mimo-v2.6-pro" :context-window 1048576)
+           (:name "cline-pass/minimax-m3" :context-window 1048576)
+           (:name "cline-pass/muse-spark-1.3-contributor" :context-window 1048576)
+           (:name "cline-pass/qwen3.7-max" :context-window 1000000
+            :reasoning-efforts ("high" "xhigh"))
+           (:name "cline-pass/qwen3.7-plus" :context-window 1000000
+            :reasoning-efforts ("low" "medium" "high" "xhigh" "max"))
+           (:name "cline-pass/qwen3.8-max" :context-window 1000000
+            :reasoning-efforts ("low" "medium" "high" "xhigh"))
+           (:name "cline-free/mimo-v2.6-flash" :context-window 1048576)
+           (:name "cline-free/muse-spark-1.3-contributor" :context-window 1048576
+            :reasoning-efforts ("low" "medium" "high" "xhigh"))
+           (:name "cline-free/solar-mini4" :context-window 524288))
+ :source ':builtin)
+
+;;; Ollama answers the OpenAI-compatible wire under /v1 on one host, hosted or
+;;; self-hosted, and lists the models it serves there. Autolith always sends a
+;;; credential, so a self-hosted server that asks for none takes any
+;;; non-empty key value.
+(register-openai-compatible-provider
+ "ollama"
+ :description "Ollama (cloud or self-hosted)"
+ :display-name "Ollama"
+ :endpoint *ollama-chat-completions-endpoint*
+ :models-endpoint (ollama-models-endpoint)
+ :credential-manager #'ollama-credential-manager-create
+ :source ':builtin)
+
+;;; Vertex AI's project and location are read from the environment when this
+;;; registration is read, and AUTOLITH_GOOGLE_VERTEX_PROVIDER_ENDPOINT names a
+;;; deployment directly. The lane serves the Gemini models on the
+;;; OpenAI-compatible route.
+(register-openai-compatible-provider
+ "google-vertex"
+ :description "Google Vertex AI"
+ :display-name "Google Vertex AI"
+ :endpoint (google-vertex-chat-completions-endpoint)
+ :credential-manager #'google-vertex-credential-manager-create
+ :models '((:name "gemini-3.8-flash" :context-window 1048576
+            :reasoning-efforts ("low" "medium" "high"))
+           (:name "gemini-3.7-flash" :context-window 1048576
+            :reasoning-efforts ("low" "medium" "high"))
+           (:name "gemini-3.6-flash" :context-window 1048576
+            :reasoning-efforts ("low" "medium" "high"))
+           (:name "gemini-3.5-flash" :context-window 1048576
+            :reasoning-efforts ("low" "medium" "high"))
+           (:name "gemini-3.5-flash-lite" :context-window 1048576
+            :reasoning-efforts ("low" "medium" "high"))
+           (:name "gemini-3.1-pro-preview" :context-window 1048576
+            :reasoning-efforts ("low" "high"))
+           (:name "gemini-3.1-pro-preview-customtools" :context-window 1048576
+            :reasoning-efforts ("low" "high"))
+           (:name "gemini-3.1-flash-lite" :context-window 1048576
+            :reasoning-efforts ("low" "medium" "high"))
+           (:name "gemini-3-flash-preview" :context-window 1048576
+            :reasoning-efforts ("low" "medium" "high"))
+           (:name "gemini-2.5-pro" :context-window 1048576
+            :reasoning-efforts ("low" "medium" "high"))
+           (:name "gemini-2.5-flash" :context-window 1048576
+            :reasoning-efforts ("low" "medium" "high"))
+           (:name "gemini-2.5-flash-lite" :context-window 1048576
+            :reasoning-efforts ("low" "medium" "high"))
+           (:name "gemini-flash-latest" :context-window 1048576
+            :reasoning-efforts ("low" "medium" "high"))
+           (:name "gemini-flash-lite-latest" :context-window 1048576
+            :reasoning-efforts ("low" "medium" "high")))
+ :source ':builtin)
