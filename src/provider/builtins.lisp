@@ -288,21 +288,62 @@
 
 
 ;;;; -- Registered Chat Completions Lanes --
-
 ;;; Every lane below speaks the OpenAI Chat Completions wire at a bearer key,
 ;;; so each is a registration rather than a client implementation. The
 ;;; credential manager comes from the lane's definition beside the other
 ;;; static API-key providers, which is what lets the vendor's own environment
 ;;; variable bootstrap the key.
 
+(-> provider--xiaomi-registration-authenticator
+    (model-provider &key (:stream stream) (:open-browser-p boolean))
+    string)
+(defun provider--xiaomi-registration-authenticator
+    (provider &key stream open-browser-p)
+  "Prompt for and save the built-in Xiaomi MiMo provider's API key."
+  (declare (ignore open-browser-p))
+  (xiaomi-api-key-login (provider-credential-manager provider)
+                        :stream (or stream *standard-output*)))
+
+(-> provider--cline-registration-authenticator
+    (model-provider &key (:stream stream) (:open-browser-p boolean))
+    string)
+(defun provider--cline-registration-authenticator
+    (provider &key stream open-browser-p)
+  "Prompt for and save the built-in Cline provider's API key."
+  (declare (ignore open-browser-p))
+  (cline-api-key-login (provider-credential-manager provider)
+                       :stream (or stream *standard-output*)))
+
+(-> provider--ollama-registration-authenticator
+    (model-provider &key (:stream stream) (:open-browser-p boolean))
+    string)
+(defun provider--ollama-registration-authenticator
+    (provider &key stream open-browser-p)
+  "Prompt for, validate, and save the built-in Ollama provider's API key."
+  (declare (ignore open-browser-p))
+  (ollama-api-key-login (provider-credential-manager provider)
+                        :stream (or stream *standard-output*)))
+
+(-> provider--google-vertex-registration-authenticator
+    (model-provider &key (:stream stream) (:open-browser-p boolean))
+    string)
+(defun provider--google-vertex-registration-authenticator
+    (provider &key stream open-browser-p)
+  "Prompt for and save the built-in Google Vertex AI provider's API key."
+  (declare (ignore open-browser-p))
+  (google-vertex-api-key-login (provider-credential-manager provider)
+                               :stream (or stream *standard-output*)))
+
 ;;; Xiaomi's models take a thinking object rather than a reasoning effort, so
 ;;; this lane declares no reasoning parameter and sends none. A Token Plan key
 ;;; is served by that plan's regional clusters instead of the shared base; a
 ;;; deployment using one names the cluster through
 ;;; AUTOLITH_XIAOMI_PROVIDER_ENDPOINT.
+
 (register-openai-compatible-provider
  "xiaomi"
  :description "Xiaomi MiMo"
+ :authenticator #'provider--xiaomi-registration-authenticator
  :display-name "Xiaomi MiMo"
  :endpoint *xiaomi-chat-completions-endpoint*
  :credential-manager #'xiaomi-credential-manager-create
@@ -331,6 +372,7 @@
 (register-openai-compatible-provider
  "cline"
  :description "Cline"
+ :authenticator #'provider--cline-registration-authenticator
  :display-name "Cline"
  :endpoint *cline-chat-completions-endpoint*
  :headers (cline-client-headers)
@@ -370,6 +412,7 @@
 (register-openai-compatible-provider
  "ollama"
  :description "Ollama (cloud or self-hosted)"
+ :authenticator #'provider--ollama-registration-authenticator
  :display-name "Ollama"
  :endpoint *ollama-chat-completions-endpoint*
  :models-endpoint (ollama-models-endpoint)
@@ -383,6 +426,7 @@
 (register-openai-compatible-provider
  "google-vertex"
  :description "Google Vertex AI"
+ :authenticator #'provider--google-vertex-registration-authenticator
  :display-name "Google Vertex AI"
  :endpoint (google-vertex-chat-completions-endpoint)
  :credential-manager #'google-vertex-credential-manager-create
