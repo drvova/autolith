@@ -27,7 +27,7 @@
         (config :reasoning-effort configuration) "medium")
   configuration)
 
-(-> compatible-lane-provider-test--provider (string configuration) (option provider))
+(-> compatible-lane-provider-test--provider (string configuration) (option model-provider))
 (defun compatible-lane-provider-test--provider (name configuration)
   "Return the provider NAME's registration builds for CONFIGURATION."
   (let ((registration (provider-registration-find name)))
@@ -219,8 +219,12 @@
                               name configuration))
                    (credentials (credential-manager-load
                                  (funcall create-function configuration)))
+                   (conversation
+                     (conversation-create
+                      configuration
+                      :identifier (format nil "compatible-lane-headers-~A" name)))
                    (headers (openai-compatible--request-headers
-                             provider credentials nil))
+                             provider credentials conversation))
                    (sent (rest (assoc header headers :test #'string=))))
               (test-assert
                (string= (openai-compatible-provider-credential-header provider)
