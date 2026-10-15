@@ -38,7 +38,20 @@
     :reader openai-compatible-provider-wire-model-name
     :type (option function)
     :documentation
-    "The function that maps a selected model to the model the wire takes."))
+    "The function that maps a selected model to the model the wire takes.")
+   (credential-header
+    :initarg :credential-header
+    :initform "Authorization"
+    :reader openai-compatible-provider-credential-header
+    :type non-empty-string
+    :documentation "The request header that carries the provider credential.")
+   (credential-scheme
+    :initarg :credential-scheme
+    :initform "Bearer"
+    :reader openai-compatible-provider-credential-scheme
+    :type string
+    :documentation
+    "The scheme prefixed to the credential, empty for a header taking it raw."))
   (:documentation
    "A provider for the streaming OpenAI Chat Completions wire protocol."))
 
@@ -85,11 +98,15 @@
                    (:reasoning-parameter (option string))
                    (:stream-usage-p boolean)
                    (:credential-manager (option credential-manager))
-                   (:wire-model-name (option function)))
+                   (:wire-model-name (option function))
+                   (:credential-header non-empty-string)
+                   (:credential-scheme string))
     openai-compatible-provider)
 (defun openai-compatible-provider-create
     (configuration &key name display-name family headers reasoning-parameter
-                        (stream-usage-p t) credential-manager wire-model-name)
+                        (stream-usage-p t) credential-manager wire-model-name
+                        (credential-header "Authorization")
+                        (credential-scheme "Bearer"))
   "Create one OpenAI-compatible provider from registered endpoint metadata.
 
 NAME keys the private API-key store. DISPLAY-NAME, when supplied, is the
@@ -97,7 +114,9 @@ user-visible provider name. CREDENTIAL-MANAGER, when supplied, replaces the
 private API-key manager built from NAME, which lets a lane read its key from
 the vendor's environment variable as well. WIRE-MODEL-NAME, when supplied,
 maps a selected model to the model the wire takes, which lets a lane keep a
-model identifier of its own."
+model identifier of its own. CREDENTIAL-HEADER and CREDENTIAL-SCHEME name the
+header that carries the key and the scheme prefixed to it, which lets a lane
+send a raw key in the vendor's own header."
   (make-instance
    'openai-compatible-provider
    :configuration configuration
@@ -112,18 +131,26 @@ model identifier of its own."
    :headers (copy-tree headers)
    :reasoning-parameter reasoning-parameter
    :stream-usage-p stream-usage-p
-   :wire-model-name wire-model-name))
+   :wire-model-name wire-model-name
+   :credential-header credential-header
+   :credential-scheme credential-scheme))
 
 (defmethod provider-reconfiguration-initargs append
     ((provider openai-compatible-provider))
-  "Preserve PROVIDER's display, family, headers, reasoning, and usage options."
+  "Preserve PROVIDER's display, family, headers, request, and naming options."
   (list :display-name (openai-compatible-provider-display-name provider)
         :family (openai-compatible-provider-family provider)
         :headers (copy-tree (openai-compatible-provider-headers provider))
         :reasoning-parameter
         (openai-compatible-provider-reasoning-parameter provider)
         :stream-usage-p
-        (openai-compatible-provider-stream-usage-p provider)))
+        (openai-compatible-provider-stream-usage-p provider)
+        :wire-model-name
+        (openai-compatible-provider-wire-model-name provider)
+        :credential-header
+        (openai-compatible-provider-credential-header provider)
+        :credential-scheme
+        (openai-compatible-provider-credential-scheme provider)))
 
 (-> openai-compatible--authenticate
     (openai-compatible-provider &key
@@ -172,21 +199,32 @@ model identifier of its own."
     (oauth-credentials &key
                        (:accept non-empty-string)
                        (:content-type (option string))
-                       (:custom list))
+                       (:custom list)
+                       (:credential-header non-empty-string)
+                       (:credential-scheme string))
     list)
 (defun openai-compatible--authenticated-headers
-    (credentials &key accept content-type custom)
-  "Return authenticated JSON HTTP headers with CUSTOM overrides."
-  (let ((default
-          (remove nil
-                  (list
-                   (cons "Authorization"
-                         (format nil "Bearer ~A"
-                                 (oauth-credentials-access-token credentials)))
-                   (and content-type (cons "Content-Type" content-type))
-                   (cons "Accept" accept)
-                   (cons "User-Agent" (provider-user-agent)))))
-        (reserved '("authorization" "content-type" "accept" "user-agent")))
+    (credentials &key accept content-type custom
+                       (credential-header "Authorization")
+                       (credential-scheme "Bearer"))
+  "Return authenticated JSON HTTP headers with CUSTOM overrides.
+
+CREDENTIAL-HEADER names the header carrying the key and CREDENTIAL-SCHEME the
+scheme prefixed to it, so a provider taking a raw key in a header of its own
+leaves the scheme empty."
+  (let* ((token (oauth-credentials-access-token credentials))
+         (value (if (plusp (length credential-scheme))
+                    (format nil "~A ~A" credential-scheme token)
+                    token))
+         (default
+           (remove nil
+                   (list
+                    (cons credential-header value)
+                    (and content-type (cons "Content-Type" content-type))
+                    (cons "Accept" accept)
+                    (cons "User-Agent" (provider-user-agent)))))
+         (reserved (list "content-type" "accept" "user-agent"
+                         (string-downcase credential-header))))
     (append
      default
      (remove-if
@@ -309,12 +347,15 @@ manager from PROVIDER-NAME."
      (:credential-manager (option credential-manager))
      (:display-name (option non-empty-string))
      (:wire-model-name (option function))
+     (:credential-header non-empty-string)
+     (:credential-scheme string)
      (:source keyword))
     string)
 (defun register-openai-compatible-provider
     (&key name description family models models-endpoint endpoint
       headers reasoning-parameter (stream-usage-p t)
       credential-manager display-name wire-model-name
+      (credential-header "Authorization") (credential-scheme "Bearer")
       (source (provider--current-registration-source)))
   "Register an OpenAI-compatible Chat Completions provider.
 
@@ -326,7 +367,9 @@ ask for a final usage chunk. CREDENTIAL-MANAGER, a function of CONFIGURATION,
 replaces the private API-key manager, which lets a lane read its key from the
 vendor's own environment variable as well. DISPLAY-NAME is the
 user-visible provider name when it differs from NAME. WIRE-MODEL-NAME, a
-function of a selected model, is the model the wire takes."
+function of a selected model, is the model the wire takes. CREDENTIAL-HEADER
+and CREDENTIAL-SCHEME name the header carrying the key and the scheme prefixed
+to it, which lets a lane send its key in the vendor's own header."
   (unless (or models models-endpoint)
     (error 'configuration-error
            :message
@@ -379,6 +422,8 @@ function of a selected model, is the model the wire takes."
         :reasoning-parameter reasoning-parameter
         :stream-usage-p stream-usage-p
         :wire-model-name wire-model-name
+        :credential-header credential-header
+        :credential-scheme credential-scheme
         :credential-manager (and credential-manager
                                 (funcall credential-manager configuration))))
      :source source)))
@@ -446,7 +491,9 @@ function of a selected model, is the model the wire takes."
    credentials
    :accept "text/event-stream"
    :content-type "application/json"
-   :custom (openai-compatible-provider-headers provider)))
+   :custom (openai-compatible-provider-headers provider)
+   :credential-header (openai-compatible-provider-credential-header provider)
+   :credential-scheme (openai-compatible-provider-credential-scheme provider)))
 
 (defmethod provider-open-response-stream
     ((provider openai-compatible-provider)
